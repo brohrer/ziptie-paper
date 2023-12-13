@@ -1,100 +1,529 @@
 \section{How the Ziptie Algorithm Works}
 \label{sec:algorithm}
 
-How it works, step-by-step.
+Ziptie takes an array of fuzzy variables that vary over time
+and finds pairs, triples, etc.
+that tend to be active at the same time. I find the analogy of bundling
+cables a good way to visualize its operation.
+
+To illustrate how it works, let's look at a primitive camera that has
+only four pixels.
+
+\begin{figure}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=3.25in]{images/algo_camera.png}}
+\caption{A four pixel camera.}
+\label{fig:algocamera}
+\end{center}
+\vskip -0.2in
+\end{figure}
+
+To keep the example streamlined and intuitive, let's also assume that
+each pixel can only sense two states: dark (a zero) and light (a one).
+Every sensed pattern can be converted to a four element array of 
+zeros and ones.
+For example, a pattern with a bright vertical bar on the left 
+(as shown in Figure~\ref{fig:algovalues}) would
+register as a sensor array $\mathbf{A}$ of
+\begin{eqnarray}
+\mathbf{A} &=& [\alpha_0, \alpha_1, \alpha_2, \alpha_3]\\
+&=& [1, 1, 0, 0]
+\end{eqnarray}
+\begin{figure}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=3.0in]{images/algo_values.png}}
+\caption{Sensed values, converted to an array.}
+\label{fig:algovalues}
+\end{center}
+\vskip -0.2in
+\end{figure}
+
+To make it even simpler, we'll assume that this camera operates
+in an impoverished environment where it will only ever encounter four
+patterns: a bright vertical bar on the left or right, or a bright horizontal
+bar on the top or bottom.
+
+\begin{figure}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=3.0in]{images/algo_patterns.png}}
+\caption{The four patterns of the camera's world.}
+\label{fig:algopatterns}
+\end{center}
+\vskip -0.2in
+\end{figure}
 
 
-For the authoritative source, I've
-\href{https://gitlab.com/brohrer/ziptie/-/blob/main/ziptie/algo.py}{liberally commented the code}.
+\subsection{Coactivation}
+\label{subsec:algocoactivation}
 
-\subsection{Bundling}
+At each time step, the pattern of cable activities will generate a set
+of coactivations between cables.
+\begin{equation}
+\kappa_{ij} = \alpha_i \alpha_j
+\end{equation}
+Only when two cables are both
+non-zero will they have a non-zero coactivation. And only when both cables
+are one will they have a coactivation of one.
+
+For the vertical left pattern
+\begin{equation}
+\alpha_0 = 1, \alpha_1 = 1, \alpha_2 = 0, \alpha_3 = 0
+\end{equation}
+these are the coactivations that result.
+\begin{eqnarray}
+\kappa_{01}&= \alpha_0 \alpha_1&= 1 \times 1 = 1\\
+\kappa_{02}&= \alpha_0 \alpha_2&= 1 \times 0 = 0\\
+\kappa_{03}&= \alpha_0 \alpha_3&= 1 \times 0 = 0\\
+\kappa_{12}&= \alpha_1 \alpha_2&= 1 \times 0 = 0\\
+\kappa_{13}&= \alpha_1 \alpha_3&= 1 \times 0 = 0\\
+\kappa_{23}&= \alpha_2 \alpha_3&= 0 \times 0 = 0
+\end{eqnarray}
+
+Calculating coactivation can conveniently be done with
+a matrix multiplication.
+\begin{eqnarray}
+\mathbf{K} = \mathbf{A}^T\mathbf{A} &=&
+\begin{bmatrix}
+  \alpha_{0} \\
+  \alpha_{1} \\
+  \alpha_{2} \\
+  \alpha_{3} \\
+\end{bmatrix}
+\begin{bmatrix}
+  \alpha_{0} &
+  \alpha_{1} &
+  \alpha_{2} &
+  \alpha_{3} \\
+\end{bmatrix}\\
+&=&
+\begin{bmatrix}
+  \kappa_{00} & \kappa_{01} & \kappa_{02} & \kappa_{03} \\
+  \kappa_{10} & \kappa_{11} & \kappa_{12} & \kappa_{13} \\
+  \kappa_{20} & \kappa_{21} & \kappa_{22} & \kappa_{23} \\
+  \kappa_{30} & \kappa_{31} & \kappa_{32} & \kappa_{33} \\
+\end{bmatrix}
+\end{eqnarray}
+
+(Although the coactivation of a cable with itself is a bit of nonsense
+and will be ignored.)
+
+Returning to the vertical left pattern,
+\begin{equation}
+\mathbf{K} = 
+\begin{bmatrix}
+  0 & 1 & 0 & 0 \\
+  1 & 0 & 0 & 0 \\
+  0 & 0 & 0 & 0 \\
+  0 & 0 & 0 & 0 \\
+\end{bmatrix}
+\end{equation}
+
+\subsection{Agglomeration energy}
+\label{subsec:algoaggenergy}
+
+Over time, the running sum of coactivation is collected in an array
+of agglomeration energies, $\mathbf{G}$. At each time step
+\begin{equation}
+\mathbf{G}_{t} = \mathbf{G}_{t - 1} + \mathbf{K}_{t}
+\end{equation}
+
+In the case of the vertical left pattern, the only elements
+of $\mathbf{K}$ that were nonzero were $\kappa_{01}$ and
+$\kappa_{10}$, so the only elements of $\mathbf{G}$ that will
+increment are $\gamma_{01}$ and $\gamma_{10}$.
+
+Similarly, the other three patterns also have only one pair
+of non-zero coactivities.
+\begin{eqnarray*}
+\mbox{vertical right:  }&\kappa_{23}, \kappa_{32}\\
+\mbox{horizontal top:  }&\kappa_{02}, \kappa_{20}\\
+\mbox{horizontal bottom:  }&\kappa_{13}, \kappa_{31}
+\end{eqnarray*}
+
+Keeping all this in mind, we know what the agglomeration energy matrix
+will look like after being exposed to, say, 66 vertical left patterns,
+77 vertical rights, 88 horizontal bottoms, and 99 instances of the
+horizontal top pattern.
+\begin{equation}
+\mathbf{G} = 
+\begin{bmatrix}
+  0 & 66 & 99 & 0 \\
+  66 & 0 & 0 & 88 \\
+  99 & 0 & 0 & 77 \\
+  0 & 88 & 77 & 0 \\
+\end{bmatrix}
+\end{equation}
+Note that both diagonals are all zeros. The main diagonal will always
+be zero because it accumulates cables' coactivation with themselves,
+which has been defined to always be zero. Coactivations on the
+anti-diagonal would be associated with diagonal patterns in the 2x2
+pixel camera, but we created the artificial restriction in the
+beginning of this example that those would never be sensed.
+
+In practice there probably won't be arbitrary restrictions on what can
+and can't be sensed, but the world tends to provide those constraints
+all on its own.
+The vast majority of patterns never occur, or they occur so rarely as
+to be negligible. The agglomeration energy matrix will naturally
+accumulate most of its observations in combinations of sensors that
+naturally occur together much more often than dicatated by chance.
+
+\subsection{Creating a new bundle}
 \label{subsec:algobundling}
 
-Once all the data has been fuzzified (transformed into a big collection
-of fuzzy variables), it gets fed into a Ziptie.
-There inputs that tend to be active at the same time get
-clustered together. The math behind this is essentially counting.
+As soon as any pair of cables, $\phi_i$ and $\phi_j$,
+accumulates more agglomeration energy than
+a threshold, $\gamma_{ij} > C_\gamma$, a new bundle $\phi_{ij}$
+created using the pair of them.
+A few things happen when this occurs.
 
-The clustering in zipties is agglomerative.
-To use the metaphor of cables carrying signals,
-each input is like a cable. The sequence of values it takes is its signal.
-Sequential values can be related, as in time series data like
-audio or stock prices.
-Or they can be independent, as in image classification benchmarks.
+\begin{enumerate}
+\item{The new bundle $\phi_{ij}$ is added to a running list of bundles,
+  and the cables it includes, $\phi_i$ and $\phi_j$, are noted.}
+\item{All the agglomeration energies associated with either cable are
+  reset to zero. In the agglomeration energy matrix, $\mathbf{G}$,
+  this zeroes out the entire row and column associated with either
+  agglomeration energy $\gamma_{ij}$ or $\gamma_{ji}$.
 
-The ziptie algorithm finds cables that tend to be co-active, that is,
-they tend to be positively valued at the same time.
-Note that this is different than correlation.
-Correlation is also strengthened when two signals are inactive at the same time.
+  This is to slow down any other bundles from being nucleated until this
+  bundle has been given the chance to agglomerate as many cables as
+  coactivity patterns will allow.
+}
+\item{A mask is created on $\mathbf{G}$ to prevent any future coactivity from
+  accumulating between $\phi_i$ and $\phi_j$ in
+  $\gamma_{ij}$ or $\gamma_{ji}$.
 
-The co-activation between two cables for a set of inputs is the product
-of their two input values. Because all inputs come from fuzzy categorical variables,
-they are known to be between zero and one, and so the product of any two inputs
-will also be between zero and one. If a cable is inactive and has a value of zero,
-then its co-activity with all others is zero.
+  This is to prevent a duplicate bundle $\phi_{ij}$
+  from ever being created and making things weird.
+}
+\end{enumerate}
 
-To find patterns in activity, every channel's cables co-activity with every
-other cable is calculated for each set of inputs, and they are summed over
-time to find trends. Once the aggregated co-activity between a pair of
-cables crosses the threshold, those two cables become bundled,
-as if bound together by a plastic zip tie. This process continues,
-and every time a cable pair exceeds the co-activity threshold for
-bundle creation, a new bundle is created.
+In our example, after $\phi_{02}$ is created, and row and column 0 and 2
+get zeroed out in the array, it looks even more sparse than before.
+\begin{equation}
+\mathbf{G} = 
+\begin{bmatrix}
+  0 & 0 & 0 & 0 \\
+  0 & 0 & 0 & 88 \\
+  0 & 0 & 0 & 0 \\
+  0 & 88 & 0 & 0 \\
+\end{bmatrix}
+\end{equation}
+Only the vertical right pattern, with which it shares no coactive pixels,
+remains intact.
 
-\subsection{Why coactivation matters}
-\label{subsec:whycoactivation}
+\subsection{Bundle activity}
+\label{subsec:algobundleactivity}
 
-Feature agglomeration was mentioned in Section~/ref{subsec:featureagg}.
-Feature agglomeration groups features based on how often
-they have similar values. It tries to group nearly identical
-features first. Ziptie on the other hand groups features based on how
-often they are co-active. (When they are both zero, that doesn't
-increase their similarity.) This creates groups of features that
-are simultaneously active, things that
-happen at the sime time. While this will capture features that are identical,
-it will also capture unrelated features whose co-occurence gives
-valuable information.
+A bundle is a learned feauture, a combination of input cables that
+tend to be active at the same time. At each time step a bundle
+has an activity value that represents the presence and intensity of that
+feature at that time. Conceptually it should be low when both of its
+constituent cable activities are low, and it should be high when both of
+of its cable activities are high.
 
+Less obvious is how active it should be when one of its cable activities
+is low and the other is high. Here another thought experiement is helpful.
+If both constituent cables of a bundle are fuzzy variables representing
+categories, one ``large" and one ``red", then the bundle would represent
+the composite category ``large and red". It was created to capture the
+case when both those variables were active at the same time. With this in
+mind, it wouldn't really make sense for it to be 50\% active when only 
+one cable was active. If something is ``large" but not ``red", or the
+other way around, it doesn't really apply to the complex concept
+that the bundle represents.
 
-\subsection{Bundle activities}
-\label{subsec:algobundle}
+A way to express this mathematically is to have the bundle activity
+be the minimum of the two cable activities.
+\begin{equation}
+\alpha_{ij} = \min(\alpha_i, \alpha_j)
+\end{equation}
+If something is ``large"
+but just a little bit ``red", then it is just a little bit
+``large and red". The bundle activity is limited by the least active of
+its constituent cables.
 
-The output of a ziptie is the activity of each of its bundles.
-A bundle's activity is calculated by taking the minimum value of the cables
-that contribute to it. Because of this, bundle activities are also constrained
-to be between zero and one. This makes them behave just like input cables.
-And in fact, after they are created, a ziptie treats its bundles like additional
-input cables, and find their co-activity with other cables.
-In this way bundles can grow. Two cables can become bundled and then one by one
-additional cables can be added creating a many-cable bundle of coactive cables.
+From this, we can see that the bundle activity is also a fuzzy variable.
+It also varies between 0 and 1. And if we choose, we can also calculate its
+coactivity with other cables.
 
-The other quirk of calculating bundle activities is that after
-the minimum value of a bundles cables is found and assigned
-to the bundle activity, that value is subtracted from that
-of each of the cables. In this way, a cable's value is a finite
-quantity that can only contribute once to a bundle's activity.
-After it has contributed to a bundle, its activity is reduced by that amount.
-Because of this, the order in which bundle activities are calculated
-is important. The most recently created bundles' activities are calculated first.
-These will be the bundles with the greatest number of cables.
-They will be the most complex and if active, account for the most activity with a single value.
+\subsection{Cable-bundle coactivity}
+\label{subsec:algocablebundle}
 
-After all bundle activities have been calculated, a cable’s remaining
-activity is available for contributing to co-activity calculations.
-This prevents activity from getting counted multiple times
-and avoids pathological cases where similar features get created repeatedly.
+Coactivity between cables and bundles is calculated and tracked the same
+way as between cables. For the cable $\phi_i$ and the bundle $\phi_{jk}$
+\begin{equation}
+\kappa_{i \cdot jk} = \alpha_i \alpha_{jk}
+\end{equation}
 
-Zipties continue to grow new bundles indefinitely. If desired, you can set up an external
-check and stop creating new bundles once you have as many as you want.
+The corresponding agglomeration energies, $\gamma_{i\cdot jk}$,
+can also be collected
+into a matrix, one where each column corresponds to a cable $\phi_i$
+and each row corresponds to a bundle $\phi_{jk}$ and each element is
+the $\gamma_{i \cdot jk}$ associated with them. This is different from the
+cable-to-cable agglomeration energy matrix, where there were duplicate
+values, and the diagonal was safe to ignore. In the cable-to-bundle
+agglomeration energy matrix every element represents a distinct and valid
+accumulation of coactivation. To distinguish between them,
+$\mathbf{G}_n$ will be used to represent cable-to-cable energies where
+bundle \textit{nucleation} occurs and $\mathbf{G}_g$ will be used to
+represent cable-to-bundle energies where bundle \textit{growth} occurs.
 
-\subsection{Multiple layers}
+\subsection{Residual cable activity}
+\label{subsec:algoresidual}
+
+Treating the cable activities like energy--a thing that is conserved--has
+worked well in practice. To do this, after the bundle activity is
+calculated, it is subtracted from its constituent cable activities.
+\begin{eqnarray}
+\alpha_{\hat{i}} &=& \alpha_i - \alpha_{ij}\\
+\alpha_{\hat{j}} &=& \alpha_j - \alpha_{ij}
+\end{eqnarray}
+To take a common example, if both incoming cable activities are one,
+then the resultant bundle activity would be one, and the residual cable
+activities would both be reduced to zero. The information that they
+represent would be concentrated into the one bundle.
+
+This is a nice behavior to have when there are two cables
+that are always coactive. If the only time that ``milk" is sensed is when
+there is also ``cereal", then it is efficient to combine them into
+a single bundled representation of ``milk and ceral". It tends to
+reduce redundancy and generate a sparser representation of sensor data
+stream.
+
+\subsection{Growing an existing bundle}
+\label{subsec:algogrowing}
+
+The bundle growing process works the same way as the bundle nucleation
+process. Once a cable-to-bundle agglomeration energy, $\gamma_{i \cdot jk}$,
+exceeds an agglomeration energy threshold $C_\gamma$, the corresponding
+cable and the constituent cables of the bundle are grouped together into
+a new bundle, $\phi_{ijk}$. As with bundle nucleation, several other
+operations happen in the tracking of agglomeration energy.
+
+\begin{enumerate}
+\item{The new bundle $\phi_{ijk}$ is added to a running list of bundles,
+  and the cables it includes, $\phi_i$, $\phi_j$, and $\phi_k$ are noted.}
+\item{All the agglomeration energies associated with either the
+  cable or bundle, both nucleation energies in
+  $\mathbf{G}_n$ and growth energies in $\mathbf{G}_g$, are
+  reset to zero. In $\mathbf{G}_n$,
+  this zeroes out the entire row and column associated with $\phi_{i}$.
+  In $\mathbf{G}_g$,
+  this zeroes out the entire column associated with $\phi_{i}$ and row
+  associated with $\phi_{jk}$.
+}
+\item{
+  A mask is created on $\mathbf{G}_n$ to prevent any future coactivity from
+  accumulating between $\phi_i$ and $\phi_{jk}$ in
+  $\gamma_{i \cdot jk}$.
+
+  The mask on $\mathbf{G}_g$ is also updated such that the new bundle
+  $\phi_{ijk}$ is prevented from accumulating agglomeration energy with
+  \textbf{a}) any of the cables that $\phi_i$ already has masked and is blocked
+  from nucleating with in $\mathbf{G}_n$
+  and \textbf{b}) any of the cables that constituent bundle $\phi_{jk}$
+  already has masked and is blocked from growing with in $\mathbf{G}_g$.
+}
+\end{enumerate}
+
+This process is designed so that it is straightforward to
+extend it to growing bundles that already
+have three or more cables in them. In fact, there is nothing in Ziptie
+that limits the number of cables a bundle can grow to have.
+
+Reaching back to Section~\ref{subsec:algobundling}, there was one step of the
+bundle nucleation process that got
+omitted in the original description because we hadn't yet described
+$\mathbf{G}_g$.
+
+\begin{itemize}
+\item{
+  The mask on $\mathbf{G}_g$ is also updated such that the new bundle
+  $\phi_{ij}$ is prevented from accumulating agglomeration energy with
+  any of the cables that $\phi_i$ and $\phi_j$ already have masked
+  and are blocked from nucleating with in $\mathbf{G}_n$.
+}
+\end{itemize}
+
+\subsection{Bundle activity, revisited}
+\label{subsec:algobundleactivityrevisited}
+
+When a cable and a bundle are combined to create a new bundle, the constituent
+bundle isn't destroyed. This is consistent with the way that cables
+aren't destroyed after they are combined to create a new bundle.
+Returning to the ``large and red" bundle example, imagine now that there
+is another fuzzy sensor that detects the presence of a ``dog", and that
+there are enough instanaces of a large, red dog that the bundle
+``large and red" gets combined with the cable ``dog" to create the new
+bundle ``large, red dog". It wouldn't make sense to destroy the bundle
+representing ``large and red" because it could still be coactive with lots
+of other sensors such as ``nose", ``ball", or ``button".
+
+However we still want to make sure that when a large, red dog happens 
+to occur, the bundle ``large, red dog" gets activated preferentially
+over just ``large and red" on its own. To do this, the approach to
+preferential and residual activities we laid out earlier can be extended
+such that bundles with more cables are activated before smaller ones.
+
+The way this plays out in a three-cable bundle is that the bundle activity
+is again the minimum of all the individual cable activities.
+\begin{equation}
+\alpha_{ijk} = \min(\alpha_i, \alpha_j, \alpha_k)
+\end{equation}
+And the residual cable activities are adjusted downward accordingly.
+\begin{eqnarray}
+\alpha_{\hat{\imath}} &=& \alpha_i - \alpha_{ijk}\\
+\alpha_{\hat{\jmath}} &=& \alpha_j - \alpha_{ijk}\\
+\alpha_{\hat{k}} &=& \alpha_k - \alpha_{ijk}
+\end{eqnarray}
+
+Only then is the activity for bundle $\phi_{jk}$ calculated.
+\begin{equation}
+\alpha_{jk} = \min(\alpha_{\hat{\jmath}}, \alpha_{\hat{k}})
+\end{equation}
+And the residual cable activities are adjusted downward again.
+\begin{eqnarray}
+\alpha_{\hat{\hat{\jmath}}} &=& \alpha_{\hat{\jmath}} - \alpha_{jk}\\
+\alpha_{\hat{\hat{k}}} &=& \alpha_{\hat{k}} - \alpha_{jk}
+\end{eqnarray}
+
+This approach concentrates activity in the bundles with the most cables,
+another design decision intended to make the representation sparser.
+
+\subsection{Choosing an agglomeration threshold, $C_\gamma$}
+\label{subsec:algochoosingthreshold}
+
+Ziptie is a heuristic method, which is a fancy name for a hack.
+It was inspired by some 
+\hyperref[sec:bio]{observations of human neurophysiology} and
+attempts to maintain some internal consistency and re-use existing
+concepts, but at the end of the day it's a cobbled-together solution
+that has proven itself useful and, in my estimation, interesting.
+
+Since Ziptie is only means to an end, there is no theoretical purity
+or algorithmic dogma that it needs to maintain. It's free to be
+whatever it needs to be to get the job done. Several of the
+steps above are the result of nothing more than trial-and-error
+fiddle-around-and-find-out experimentation. Zeroing out all the
+agglomeration energies associated with constituents of new bundles,
+the reduction of input cable activations by the amount of
+any bundles they contribute to, and even the mathematical
+formulation of coactivation are the results of trying things out.
+
+So if you feel like making some tweaks of your own, be my guest.
+Let me know what you learn.
+
+Related to this, there is no principled way to choose the agglomeration
+threshold, $C_\gamma$. As of this writing, it defaults to 1000. A pair
+of cables must be fully coactive 1000 times before they will nucleate a
+bundle (or they can be partially coactive several thousand times).
+
+$C_\gamma$ is a hyperparameter for Ziptie, a value that controls how
+it behaves. It is set entirely at the whims of the person implementing it.
+If you are serious about choosing the best one for your application,
+the accepted method is to try it our at a lot of different values and
+watch for which one behaves the best. Crude but effective.
+
+The result of a lower $C_\gamma$ is that bundles will nucleate and grow
+more aggressively. On the upside, the Ziptie will learn more quickly.
+On the downside, it is at risk of creating bundles that aren't really
+representative of the patterns that will be observed over the much longer
+term, millions of timesteps ahead. A higher $C_\gamma$ leans toward the
+other side of that trade-off. It is slower to learn, but the bundles it
+builds are more likely to capture and sparsify the underlying structure
+of the cable activities and the environment that triggers them.
+
+Due to the no-holds-barred approach Ziptie is allowed, there is an
+option to customize this behavior further by choosing different
+$C_\gamma$ thresholds for bundle nucleation ($C_{\gamma n}$) and
+bundle growth ($C_{\gamma g}$). A higher threshold for growth
+will result in a proliferation of two-cable bundles, a more granular
+representation of the collective activity of the cables.
+A lower threshold for growth will tend to create larger more complex
+bundles, but perhaps fewer of them. There is no right answer.
+I recommend thinking carefully about the system you are integrating the
+Ziptie into, and forming an opinion about which would be more valuable.
+You can, of course, also brute force try
+a variety of $C_{\gamma n}$ and $C_{\gamma g}$
+combinations and see which results are more to your liking.
+
+\subsection{Ziptie stacks}
 \label{subsec:algolayers}
 
-Because bundle activities are also valued between zero and one, the outputs
-of one zipie can serve as the inputs to another. The bundles created
-in one ziptie can serve as the cables, the inputs, to the next.
+One topic that hasn't been covered yet is bundle-bundle agglomeration.
+There's no reason we couldn't follow the same patterns
+as cable-cable and cable-bundle agglomeration and implement it,
+but luckily that won't be necessary. In the grand tradition of algorithmic
+laziness (also known as ``efficiency"),
+we can reduce it to a previously solved problem
+and save ourselves the extra work.
 
-This allows for hierarchical clustering. Low level cables can be bound into bundles
-in the first zipties, and these can then be bound into yet more
-complex bundles in the next. This process can be repeated as many times as you like.
+Because bundle activities are valued between zero and one,
+as cables are,
+the collection of bundle activity outputs generated by one instance
+of the Ziptie can be a collection of cable activities
+input to another. The higher level Ziptie can find coactivities
+between the bundle activities of the lower one and nucleate new bundles
+as they are warranted. It's anti-climactically straightforward. 
 
+In fact, it's possible to line up as many Ziptie instance as you want,
+and perform hierarchical clustering. The bundles of one instance are
+the cables of the next and the process repeats, each time at a different
+scale. Bundles coming out of a four-level Ziptie stack will have at least
+16 cables each, and can have many more.
+
+\subsection{Stopping conditions}
+\label{subsec:algostopping}
+
+When stacking Zipties, the trickiest part is making sure the number of bundles
+coming out of the lower one matches the number of cables expected by
+the upper one. Zipties don't (yet) have the ability to increase their
+cable capacity on the fly, so this is a number you will need to choose
+when you create them. Initially the lowest Ziptie will have no bundles
+at all, but you can bridge this gap by choosing an upper limit on
+the number of bundles it will be allowed to grow to, and passing an array
+of that size into the next Ziptie, padded with zeros to take up the slack
+until all the bundles get created to populate it.
+
+To complement this, it's helpful to make that upper limit on bundles
+in the lower Ziptie explicit. The Ziptie algorithm doesn't have any mechanism
+built in for limiting bundle creation, but it can be achieved by setting up
+an external check on the number of bundles before calling it.
+
+Number of bundles created is just one posible stopping condition you
+could use. Because this is logic that you will be writing, you can make it
+whatever you want it to be. You can set it up so that the bundle creation
+stops after a given number of time steps, or after every cable
+has been incorporated into at least one bundle. This aspect of the Ziptie's
+behavior is entirely in your hands.
+
+\subsection{Projection}
+\label{subsec:algoprojections}
+
+The Ziptie is in some ways similar to a layer in a classic neural network
+architecture called a multilayer perceptron. An array of inputs go it, they
+get combined and mixed together, and an array of outputs come out
+the other side. A recurring challenge with neural networks is to 
+determine what inputs are necessary to create a given output. Like the
+Ziptie, a neural network is a feature learner, so it's natural to ask
+what those features represent.
+
+In neural networks, teasing out the feature represented by a given node
+is still a topic of active research. Inputs
+are scaled, added, and then subjected to any number of nonlinear
+squashings and choppings. By the time they reach the output, the original
+input signals have been distorted beyond reconstruction. Researchers have
+to rely on more indirect methods to answer the question of which patterns of
+inputs are related to which output.
+
+But in a Ziptie this is trivial. If you want to know which input cables
+contribute to a given output bundle, that information is explicitly stored.
+Any set of bundle activities can be projected down to the set
+of cable activities that generated them.
+To see what a single bundle represents, you can create
+a fake test array of bundle activities and set all of them to zero except
+for the bundle of interest, which is set to one.

@@ -15,9 +15,8 @@ Feature learning, also known as \textbf{
 {automated feature engineering}}, is when features are generated through
 heuristics or the result of algorithms.
 There are a collection of
-\textbf{
 \href{https://en.wikipedia.org/w/index.php?title=Feature_engineering&section=5}
-{open source tools}} for this, which largely
+{open source tools} for this, which largely
 focus on time series data sets.
 
 Feature learning is also referred to as \textbf{
@@ -26,14 +25,16 @@ Feature learning is also referred to as \textbf{
 {https://en.wikipedia.org/w/index.php?title=Feature_learning&section=6}
 {Principal components analysis}} (PCA) is the poster child for unsupervised
 representation learning. PCA resembles Ziptie in that it finds combinations
-of features that tend to co-occur. PCA is focused on \textit{dimensionality
-reduction} in that its goal is to reduce the total number of features used
-to a small set that distills out most of the informtion in the data.
+of features that tend to co-occur. PCA is also different in a number
+ways; an important one is that 
+it is focused on dimensionality
+reduction. The goal of PCA is to reduce the total number of features used
+to a small set that distills out most of the information in the data.
 
 \subsection{Sparse Coding}
 \label{subsec:sparsecoding}
 
-Ziptie is an example of specific variant of feature learning called
+Ziptie is an example of a specific variant of feature learning called
 \textbf{\href{https://en.wikipedia.org/wiki/Sparse_dictionary_learning}
 {sparse coding}} or \textbf{sparse dictionary learning}, a family of methods
 for learning concise ways to represent data. 
@@ -47,7 +48,7 @@ the basis functions are the words.
 Overcomplete means that
 there is more than one combination of words that express the same idea.
 Overcompleteness allows for sparse representation, because you
-can choose the represent the idea concisely, using the representation
+can choose to express the idea using the representation
 with the fewest words.)
 
 A culinary example of sparse coding is ``Moose Tracks" flavor ice cream.
@@ -55,7 +56,7 @@ It could just as accurately be described as ``vanilla with small
 peanut butter cups and fudge ripples". The name ``Moose Tracks" is
 superfluous; it means exactly the same thing.
 Its existence shows overcompleteness in the dictionary
-of ice cream flavor names. But it allows for a concise representation.
+of ice cream flavor names. And it allows for a concise representation.
 
 Another example of sparse coding shows up in music. As seen in
 Figure~\ref{fig:chords}, combinations of several keys (features)
@@ -63,7 +64,8 @@ can be represented as chords (basis functions). There are many more
 possible chords than keys. Moving to a chord representation does not
 make a shorter dictionary than working with keys directly. But what
 it buys us is the ability to represent a collection of several keys with
-a single feature instead of having to enumerate all the keys involved. 
+a single composite feature instead of having to enumerate
+all the keys involved. 
 
 \begin{figure}[ht]
 \vskip 0.2in
@@ -91,18 +93,22 @@ count of non-zero features changes sharply by one, even if the feature
 value only changes from 0 to 0.001. And as that feature value changes from
 0.001 to 0.1 to 10, the $\ell^0$ norm doesn't change at all.
 
-As any experienced algorithms person will tell you, when presented
+As any self-respecting algorithm nerd will tell you, when presented
 with a problem you can't solve, just ignore it and solve a different one.
-In sparse coding, if ``sparse" is redefined to minimizing the $\ell^1$ norm,
-instead of the $\ell^0$ norm, then it becomes differentiable, and can be
+In the hard problem of sparse coding, you can redefine ``sparse"
+to mean minimizing the $\ell^1$ norm,
+instead of the $\ell^0$ norm. Then it becomes differentiable, and can be
 solved with familiar tools, including backpropagation and neural networks.
+This is how the field of machine learning has handled it anyway.
 
-However, all hope is not lost. There is a whole field of optimization
+However, all hope is not lost for the $\ell^0$-sparse coding problem.
+There is a whole field of optimization
 for hard problems like this. (If you're trying to hire a person to do this
-their past job titles will probably be Operations Research, rather than
+their past job titles will probably sound more like
+Operations Research than
 Machine Learning.)
-A \href{https://hal.science/hal-01965904/document}{2018 paper}
-\footnote{Liu, Y., Canu, S., Honeine, P., Ruan., S. (2018)
+A \href{https://hal.science/hal-01965904/document}{2018 paper}\footnote{
+Liu, Y., Canu, S., Honeine, P., Ruan., S. (2018)
 K-SVD with a real L0 optimization: application
 to image denoising.
 Proc. 28th IEEE workshop on Machine Learning for Signal Processing (MLSP),
@@ -113,16 +119,17 @@ one of these optimization methods (mixed integer quadratic programming).
 I applaud them for tackling the honest-to-goodness sparse coding problem.
 The only downside for practical use is that it is quite computationally
 expensive. The authors don't say exactly how expensive, but when
-they describe it as an Achilles' heel, that suggests it's not quite
-ready for real time applications.
+they describe it as an ``Achilles' heel", that suggests the method is not quite
+ready for real time production applications.
 
 Another way to make sparse optimization easier to solve is to keep the
 $\ell^0$ norm, but to relax the minimization requirement. What if we had
-a method that was just pretty OK? What if it didn't necessarily
+a method that wasn't perfect, but was pretty OK? What if it didn't necessarily
 find the way to use the absolute minimum number of features each time,
 but found a way to get kind of close? And what it it only took one-millionth
 of the computation? This describes the path of heuristic approximation,
-or to use less floofed-up language, a hack. The hack that Ziptie uses is
+or to use less floofed-up language, a hack. This is the path that Ziptie
+follows, and the hack that Ziptie uses is
 agglomerative clustering.
 
 \subsection{Agglomerative Clustering}
@@ -137,7 +144,7 @@ repeatly combining to form larger clusters is
 https://en.wikipedia.org/w/index.php?title=Hierarchical_clustering&section=3
 }{agglomerative clustering}}.
 It's also called hierarchical clustering because when you trace the lineage
-observations and mini-clusters combining, it forms a tree showing
+of observations and mini-clusters combining, it forms a tree showing
 the hierarchy of similarity between them. 
 
 \subsection{Multi-membership Clustering}
@@ -165,8 +172,8 @@ with multiple cluster membership.
 On its surface,
 scikit-learn's
 \href{https://scikit-learn.org/stable/auto_examples/cluster/plot_digits_agglomeration.html#sphx-glr-auto-examples-cluster-plot-digits-agglomeration-py}
-{feature agglomeration}
-\footnote{Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V.,
+{feature agglomeration}\footnote{
+Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V.,
 Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P.,
 Weiss, R., Dubourg, V., Vanderplas, J., Passos, A.,
 Cournapeau, D., Brucher, M., Perrot, M., Duchesnay, E. (2011)
@@ -177,12 +184,13 @@ It uses agglomerative clustering to group
 features into larger groups of features, but it is different in
 some important ways. Feature agglomeration doesn't allow for
 multiple membership, and its clustering criterion is based on
-correlations, rather than coactivations. More about why this matters in
-Section~\ref{subsec:whycoactivation}.
+correlations, rather than coactivations. (More about coactivation in
+Section~\ref{subsec:algocoactivation}.)
 
-Ziptie bundling process is actually more similar to
+Ziptie's bundling process is actually more similar to
+\textbf{
 \href{https://en.wikipedia.org/wiki/Byte_pair_encoding}
-{byte pair encoding} (BPE),
+{byte pair encoding}} (BPE),
 where frequently co-occurring characters get represented
 and replaced by a unique code
 of their own. The process is repeated until even long strings that
@@ -199,8 +207,8 @@ size batch of data. (There is some fun detail in
 \label{subsec:continual}
 
 Continual learning is a particular case of machine learning where the
-algorithm never stops evolving in response to its inputs,
-\footnote{Wang, L., Zhang, X., Su, H., and Zhu, J. (2015)
+algorithm never stops evolving in response to its inputs,\footnote{
+Wang, L., Zhang, X., Su, H., and Zhu, J. (2015)
 A Comprehensive Survey of Continual Learning: Theory, Method and Application.
 arXiv.
 \href{https://arxiv.org/abs/2302.00487}{https://arxiv.org/abs/2302.00487}
@@ -210,13 +218,13 @@ Ziptie is a specific flavor of continual learning called
 \textbf{\href{https://en.wikipedia.org/wiki/Online_machine_learning}{online learning}}
 where the algorithm does a small update after every new data point is collected.
 Ziptie also falls into the niche category of \textit{unsupervised}
-continual learning like this
-\footnote{Ashfahani, A. and Pratama, M. (2021).
+continual learning like this\footnote{
+Ashfahani, A. and Pratama, M. (2021).
 Unsupervised Continual Learning in Streaming Environments. arXiv.
 \href{https://arxiv.org/pdf/2109.09282.pdf}{https://arxiv.org/pdf/2109.09282.pdf}
 }
-and this
-\footnote{Rao, D., Visin, F., Rusu, A. A., Teh, Y. W., Pascanu, R., and Hadsell, R.
+and this\footnote{
+Rao, D., Visin, F., Rusu, A. A., Teh, Y. W., Pascanu, R., and Hadsell, R.
 (2019) Continual Unsupervised Representation Learning.
 Paper presented at 33rd Conference on Neural Information Processing Systems
 (NeurIPS 2019), Vancouver, Canada.

@@ -1,7 +1,53 @@
 \section{Biological Motivation}
 \label{sec:bio}
 
-This is biologically motivated.
+Ziptie grew out of a computational neuroscience thought experiment.
+Imagine that 
 
-Biological motivation of fuzzy categorical variables
-In computational modeling of neural activity, the firing rate of a neuronal axon varies from nearly no activity to a maximum tonic rate. This can be represented as a fuzzy categorical variable. If a neuron is connected to, say, a pain receptor, then a zero would represent no pain signal, and a one, the highest amount of pain the receptor can sense.
+\begin{itemize}
+\item{
+The firing rate of a neuron can be represented as a value between
+zero (nearly no activity) and one (a maximum, tonic rate).
+This can be represented as a fuzzy categorical variable.
+If a neuron is connected to, say, a pain receptor, then a zero
+would represent no pain signal, and a one, the highest amount
+of pain the receptor can sense.
+}
+\item{
+Sensory neurons carry no explicit
+information about what physical phenomena
+they are sensing.
+}
+\item{
+The brain is a collection point for sensory neurons of all types,
+where it organizes them into useful features. For instance, optical
+neurons are organized into feature detectors for edges.
+}
+\item{
+The brain does this using only the neurons' activation history.
+}
+\item{
+Since it is agnostic to sensory modality, the brain naively applies
+the same methodology (algorithm) to all incoming sensory neurons.
+}
+\item{
+The features created are sparse, that is, only a small number of
+neurons can make a contribution to them. 
+}
+\item{
+The set of neurons that can contribute to a feature
+is created according to a variation of
+\href{https://en.wikipedia.org/wiki/Hebbian_theory}{Hebbian theory}
+in which neurons that fire at the same time become more closely 
+associated over time.
+}
+\item{
+An active feature in turn inhibits the neurons that contribute to it,
+so that they can't simultaneously contribute to other features.
+The collection of neurons' activities is preferentially represented
+in higher level features.
+}
+\end{itemize}
+
+This was the line of wondering, coupled with a lot of trial and error
+in simulations, that led to the Ziptie algorithm.

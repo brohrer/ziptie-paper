@@ -10,7 +10,11 @@ certain sensors gives more information than either of them alone.
 The combination of $x$- \textit{and} $y$-position tells more about
 when to watch for obstacles than either variable on its own.
 The speed \textit{and} position of arm tells more about what shoulder
-torque needs to be generated than either variable on its own.
+torque needs to be generated than either does alone.
+Individual pixels from a camera are of very little use, but certain patterns
+are detected across many pixels, they can clearly distinguish
+between a hawk and a handsaw.
+
 These cases
 of sensor interaction can be hard coded manually. Human designers
 often exploit their knowledge of the system to do this
@@ -20,8 +24,9 @@ to intuit these useful interactions, they can be learned.
 Automatically creating these predictive features is the goal of 
 the \textbf{Ziptie} algorithm.
 
-(If you want to skip the How and Why of it, jump to
-\textbf{\hyperref[sec:code]{using the Ziptie library}}.)
+(If you want to skip straight to using the code, jump to
+\href{https://codeberg.org/brohrer/ziptie/src/branch/main/README.md}{the README}
+for the repository.)
 
 Ziptie makes a uncommon assumption that all sensor signals,
 $\alpha_i$, (otherwise known as \textbf{features}) are
@@ -30,12 +35,12 @@ $\alpha_i \in [0, 1]$. It also assumes that
 a fixed number of features, $n$, are
 received at discrete time intervals in a vector $\mathbf{A}$.
 \begin{equation}
-\mathbf{A} = (\alpha_1, \alpha_2, \alpha_3, ..., \alpha_n)
+\mathbf{A} = [\alpha_1, \alpha_2, \alpha_3, ..., \alpha_n]
 \end{equation}
 The $n$ features of the sensor data
 can be imagined as $n$ separate 
 \textbf{cables}, $\phi_i$, each carrying a single signal
-(as they often are in robots). The
+(as they often do in robots). The
 challenge of clustering these cables into informative combinations
 can then be imagined as creating \textbf{bundles} of cables, $\phi_{ij}$,
 as with a ziptie.
@@ -57,8 +62,8 @@ and $\phi_j$.
 \end{equation}
 The member cables of $\phi_{ij}$  retain only the residual signal.
 \begin{eqnarray}
-\alpha_{\hat{i}} &=& \alpha_i - \alpha_{ij}\\
-\alpha_{\hat{j}} &=& \alpha_j - \alpha_{ij}
+\alpha_{\imath} &=& \alpha_i - \alpha_{ij}\\
+\alpha_{\jmath} &=& \alpha_j - \alpha_{ij}
 \end{eqnarray}
 This approach constrains bundles' activities to remain on [0, 1] as well.
 Bundles can be coactive with cables and with other bundles.
@@ -72,7 +77,7 @@ bundled again
 together, the number of cables in the largest bundles will grow too.
 These can be limited from growing too large by introducing
 a \textbf{stopping condition}, such as
-a maximum number of bundles or fixed number of time steps.
+a maximum number of bundles or a fixed number of time steps.
 
 % The rest of this paper attempts to answer the questions you might have:
 % \begin{itemize}
